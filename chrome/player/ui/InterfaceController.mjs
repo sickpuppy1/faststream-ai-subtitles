@@ -1145,6 +1145,7 @@ export class InterfaceController {
     this.state.playing = true;
     this.hideBigPlayButton();
     this.updatePlayPauseButton();
+    this.subtitlesManager.startRenderLoop();
     if (!previousValue) {
       this.playPauseAnimation();
       this.queueControlsHide();
@@ -1155,6 +1156,7 @@ export class InterfaceController {
     const previousValue = this.state.playing;
     this.state.playing = false;
     this.updatePlayPauseButton();
+    this.subtitlesManager.stopRenderLoop();
     this.showControlBar();
     if (previousValue) {
       this.playPauseAnimation();

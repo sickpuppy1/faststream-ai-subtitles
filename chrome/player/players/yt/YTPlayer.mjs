@@ -733,6 +733,10 @@ export default class YTPlayer extends DashPlayer {
     this.debugDownloadList.push({
       data: newResponse.data,
     });
+    // Keep only the last 20 entries so old segments can be garbage collected
+    if (this.debugDownloadList.length > 20) {
+      this.debugDownloadList.shift();
+    }
 
 
     if (!newResponse.data) {
@@ -785,6 +789,10 @@ export default class YTPlayer extends DashPlayer {
       this.debugDownloadList.push({
         data: newResponse.data,
       });
+      // Keep only the last 20 entries so old segments can be garbage collected
+      if (this.debugDownloadList.length > 20) {
+        this.debugDownloadList.shift();
+      }
 
       if (!newResponse.data) {
         throw new Error('No data from SABR UMP processor');

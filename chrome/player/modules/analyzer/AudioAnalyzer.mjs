@@ -230,6 +230,16 @@ export class AudioAnalyzer extends EventEmitter {
     const audioContext = new AudioContext({
       sinkId: {type: 'none'},
     });
+    // Guard so the context is closed exactly once, whether analysis finishes or the player is destroyed first
+    let contextClosed = false;
+    const closeContext = () => {
+      if (!contextClosed) {
+        contextClosed = true;
+        audioContext.close();
+      }
+    };
+    player.on(DefaultPlayerEvents.DESTROYED, closeContext);
+
     const audioSource = audioContext.createMediaElementSource(player.getVideo());
     audioAnalyzerNode.attach(player.getVideo(), audioSource, audioContext);
     audioAnalyzerNode.on('vad', this.onVadFrameProcessed.bind(this));
@@ -249,7 +259,7 @@ export class AudioAnalyzer extends EventEmitter {
       this.runAnalyzerInBackground(player, doneRanges, (completed)=>{
         audioAnalyzerNode.destroy();
         audioSource.disconnect();
-        audioContext.close();
+        closeContext();
         onDone(completed);
       });
     };

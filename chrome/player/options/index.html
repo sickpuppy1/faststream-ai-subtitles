@@ -386,6 +386,115 @@
             <button id="export" data-i18n="options_export"></button>
         </section>
 
+        <section class="options-section" data-search-section="aisubs">
+            <div class="section-heading">
+                <h1 data-i18n="options_aisubs_header"></h1>
+                <span class="section-count" aria-live="polite"></span>
+            </div>
+            <p class="hint" data-i18n="options_aisubs_hint"></p>
+
+            <div class="search-target-remove">
+                <br>
+                <div class="option grid1">
+                    <input type="checkbox" id="aisubsautogen" data-i18n-label="options_aisubs_autogenerate">
+                    <div class="label search-target-text" data-i18n="options_aisubs_autogenerate"></div>
+                </div>
+            </div>
+
+            <div class="search-target-remove">
+                <br>
+                <div class="option grid1">
+                    <input type="checkbox" id="aisubswaitfirst" data-i18n-label="options_aisubs_waitfirstline">
+                    <div class="label search-target-text" data-i18n="options_aisubs_waitfirstline"></div>
+                </div>
+            </div>
+
+            <div class="search-target-remove">
+                <br>
+                <div class="option grid1">
+                    <input type="checkbox" id="aisubsprecisetiming" data-i18n-label="options_aisubs_precisetiming">
+                    <div class="label search-target-text" data-i18n="options_aisubs_precisetiming"></div>
+                </div>
+            </div>
+
+            <div class="search-target-remove">
+                <br>
+                <div class="option grid2">
+                    <div class="label search-target-text" data-i18n="options_aisubs_provider"></div>
+                    <div class="select" id="aisubsprovider" data-i18n-label="options_aisubs_provider"></div>
+                </div>
+            </div>
+
+            <div class="search-target-remove">
+                <br>
+                <div class="option">
+                    <div class="label search-target-text" data-i18n="options_aisubs_apikey"></div>
+                    <div class="api-key-row">
+                        <input type="password" id="aisubsapikey" placeholder="sk-..." autocomplete="off" spellcheck="false" data-i18n-label="options_aisubs_apikey"></input>
+                        <button type="button" id="aisubsapikeytoggle" data-i18n="options_aisubs_apikey_show"></button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="search-target-remove" id="aisubsbaseurlrow" style="display: none;">
+                <br>
+                <div class="option grid2">
+                    <div class="label search-target-text" data-i18n="options_aisubs_baseurl"></div>
+                    <input class="text" type="url" id="aisubsbaseurl" placeholder="http://127.0.0.1:8080/v1" data-i18n-label="options_aisubs_baseurl"></input>
+                </div>
+            </div>
+
+            <div class="search-target-remove">
+                <br>
+                <div class="option grid2">
+                    <div class="label search-target-text" data-i18n="options_aisubs_model"></div>
+                    <input class="text" type="text" id="aisubsmodel" data-i18n-label="options_aisubs_model"></input>
+                </div>
+            </div>
+
+            <div class="search-target-remove">
+                <br>
+                <div class="option grid2">
+                    <div class="label search-target-text" data-i18n="options_aisubs_language"></div>
+                    <div class="select" id="aisubslanguage" data-i18n-label="options_aisubs_language"></div>
+                </div>
+            </div>
+
+            <div class="search-target-remove">
+                <br>
+                <div class="option grid2">
+                    <div class="label search-target-text" data-i18n="options_aisubs_translate_to"></div>
+                    <div class="select" id="aisubstranslateto" data-i18n-label="options_aisubs_translate_to"></div>
+                </div>
+            </div>
+
+            <div class="search-target-remove">
+                <br>
+                <div class="option grid2">
+                    <div class="label search-target-text" data-i18n="options_aisubs_translate_model"></div>
+                    <input class="text" type="text" id="aisubstranslatemodel" data-i18n-label="options_aisubs_translate_model"></input>
+                </div>
+            </div>
+
+            <div class="search-target-remove">
+                <br>
+                <div class="option grid2">
+                    <div class="label search-target-text" data-i18n="options_aisubs_lookahead"></div>
+                    <input class="number" type="number" id="aisubslookahead" min="30" max="600" step="1"
+                        data-i18n-label="options_aisubs_lookahead"></input>
+                </div>
+            </div>
+
+            <div class="search-target-remove">
+                <br>
+                <div class="option grid2">
+                    <div class="label search-target-text" data-i18n="options_aisubs_concurrency"></div>
+                    <input class="number" type="number" id="aisubsconcurrency" min="1" max="6" step="1"
+                        data-i18n-label="options_aisubs_concurrency"></input>
+                </div>
+            </div>
+        </section>
+
         <section class="options-section">
             <div class="section-heading">
                 <h1 data-i18n="options_help_header"></h1>

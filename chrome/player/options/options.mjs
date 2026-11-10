@@ -18,6 +18,21 @@ import {DefaultToolSettings} from './defaults/ToolSettings.mjs';
 import {DefaultQualities} from './defaults/DefaultQualities.mjs';
 import {ColorThemes} from './defaults/ColorThemes.mjs';
 
+// Default models per AI subtitles provider, shown as placeholders when the model field is empty
+const AI_SUBS_PROVIDER_MODELS = {
+  openai: {model: 'gpt-transcribe', translateModel: 'gpt-4.1-mini'},
+  groq: {model: 'whisper-large-v3-turbo', translateModel: 'llama-3.3-70b-versatile'},
+  custom: {model: 'whisper-1', translateModel: ''},
+};
+// Spoken language codes (ISO 639-1). '' = auto-detect. Labels come from options_aisubs_lang_<code>.
+const AI_SUBS_SPOKEN_LANGUAGES = ['', 'ja', 'en', 'zh', 'ko', 'es', 'fr', 'de', 'pt', 'ru', 'it', 'hi', 'ar', 'id', 'th', 'vi'];
+// Translation targets: [English name stored in options, code used for the label key]
+const AI_SUBS_TRANSLATE_TARGETS = [
+  ['English', 'en'], ['Japanese', 'ja'], ['Chinese', 'zh'], ['Korean', 'ko'], ['Spanish', 'es'],
+  ['French', 'fr'], ['German', 'de'], ['Portuguese', 'pt'], ['Russian', 'ru'], ['Hindi', 'hi'],
+  ['Indonesian', 'id'], ['Vietnamese', 'vi'], ['Thai', 'th'], ['Arabic', 'ar'], ['Italian', 'it'],
+];
+
 let Options = {};
 const analyzeVideos = document.getElementById('analyzevideos');
 const playStreamURLs = document.getElementById('playstreamurls');
@@ -32,6 +47,20 @@ const seekStepSize = document.getElementById('seekstepsize');
 const autoplayYoutube = document.getElementById('autoplayyt');
 const autoplayNext = document.getElementById('autoplaynext');
 const qualityMenu = document.getElementById('quality');
+const aiSubsAutoGenerate = document.getElementById('aisubsautogen');
+const aiSubsWaitFirstLine = document.getElementById('aisubswaitfirst');
+const aiSubsPreciseTiming = document.getElementById('aisubsprecisetiming');
+const aiSubsProvider = document.getElementById('aisubsprovider');
+const aiSubsApiKey = document.getElementById('aisubsapikey');
+const aiSubsApiKeyToggle = document.getElementById('aisubsapikeytoggle');
+const aiSubsBaseUrlRow = document.getElementById('aisubsbaseurlrow');
+const aiSubsBaseUrl = document.getElementById('aisubsbaseurl');
+const aiSubsModel = document.getElementById('aisubsmodel');
+const aiSubsLanguage = document.getElementById('aisubslanguage');
+const aiSubsTranslateTo = document.getElementById('aisubstranslateto');
+const aiSubsTranslateModel = document.getElementById('aisubstranslatemodel');
+const aiSubsLookahead = document.getElementById('aisubslookahead');
+const aiSubsConcurrency = document.getElementById('aisubsconcurrency');
 const importButton = document.getElementById('import');
 const exportButton = document.getElementById('export');
 const clickAction = document.getElementById('clickaction');
@@ -117,6 +146,19 @@ async function loadOptions(newOptions) {
   setSelectMenuValue(colorTheme, Options.colorTheme);
   setSelectMenuValue(miniPos, Options.miniPos);
   setSelectMenuValue(qualityMenu, Options.defaultQuality);
+  // AI subtitles settings. The API key is not in Options (Export writes Options to a file), see loadAiSubsApiKey.
+  aiSubsAutoGenerate.checked = !!Options.aiSubtitles.autoGenerate;
+  aiSubsWaitFirstLine.checked = Options.aiSubtitles.waitForFirstLine !== false;
+  aiSubsPreciseTiming.checked = Options.aiSubtitles.preciseTiming !== false;
+  setSelectMenuValue(aiSubsProvider, Options.aiSubtitles.provider);
+  aiSubsBaseUrl.value = Options.aiSubtitles.baseUrl || '';
+  aiSubsModel.value = Options.aiSubtitles.model || '';
+  setSelectMenuValue(aiSubsLanguage, Options.aiSubtitles.language);
+  setSelectMenuValue(aiSubsTranslateTo, Options.aiSubtitles.translateTo);
+  aiSubsTranslateModel.value = Options.aiSubtitles.translateModel || '';
+  aiSubsLookahead.value = Options.aiSubtitles.lookaheadSeconds;
+  aiSubsConcurrency.value = Options.aiSubtitles.concurrency;
+  updateAiSubsUI();
   // setSelectMenuValue(ytclient, Options.defaultYoutubeClient);
 
   document.body.dataset.theme = Options.colorTheme;
@@ -185,6 +227,32 @@ function setSelectMenuValue(container, value) {
   select.value = value;
 }
 
+// Same as createSelectMenu, but each option has its own label. items = [{value, label}]
+function createLabeledSelectMenu(container, items, selected, callback) {
+  container.replaceChildren();
+  const select = document.createElement('select');
+  for (const item of items) {
+    const optionElement = document.createElement('option');
+    optionElement.value = item.value;
+    optionElement.textContent = item.label;
+    if (item.value === selected) {
+      optionElement.selected = true;
+    }
+    select.appendChild(optionElement);
+  }
+  select.addEventListener('change', callback);
+  container.appendChild(select);
+}
+
+// Shows the custom base URL row only for the custom provider, and sets the provider's default models as placeholders
+function updateAiSubsUI() {
+  const provider = Options.aiSubtitles.provider;
+  const defaults = AI_SUBS_PROVIDER_MODELS[provider] || AI_SUBS_PROVIDER_MODELS.openai;
+  aiSubsBaseUrlRow.style.display = provider === 'custom' ? '' : 'none';
+  aiSubsModel.placeholder = defaults.model;
+  aiSubsTranslateModel.placeholder = defaults.translateModel;
+}
+
 createSelectMenu(daltonizerType, Object.values(DaltonizerTypes), Options.videoDaltonizerType, 'options_video_daltonizer', (e) => {
   Options.videoDaltonizerType = e.target.value;
   if (Options.videoDaltonizerType === DaltonizerTypes.NONE) {
@@ -232,6 +300,27 @@ createSelectMenu(miniPos, Object.values(MiniplayerPositions), Options.miniPos, '
 
 createSelectMenu(qualityMenu, Object.values(DefaultQualities), Options.defaultQuality, null, (e) => {
   Options.defaultQuality = e.target.value;
+  optionChanged();
+});
+
+createSelectMenu(aiSubsProvider, Object.keys(AI_SUBS_PROVIDER_MODELS), DefaultOptions.aiSubtitles.provider, 'options_aisubs_provider', (e) => {
+  Options.aiSubtitles.provider = e.target.value;
+  updateAiSubsUI();
+  optionChanged();
+});
+
+createLabeledSelectMenu(aiSubsLanguage, AI_SUBS_SPOKEN_LANGUAGES.map((code) => ({
+  value: code,
+  label: Localize.getMessage(code === '' ? 'options_aisubs_lang_auto' : 'options_aisubs_lang_' + code),
+})), DefaultOptions.aiSubtitles.language, (e) => {
+  Options.aiSubtitles.language = e.target.value;
+  optionChanged();
+});
+
+createLabeledSelectMenu(aiSubsTranslateTo, [{value: '', label: Localize.getMessage('options_aisubs_translate_off')}].concat(
+    AI_SUBS_TRANSLATE_TARGETS.map(([name, code]) => ({value: name, label: Localize.getMessage('options_aisubs_lang_' + code)}))),
+DefaultOptions.aiSubtitles.translateTo, (e) => {
+  Options.aiSubtitles.translateTo = e.target.value;
   optionChanged();
 });
 
@@ -403,6 +492,74 @@ autoplayNext.addEventListener('change', () => {
 ytPlayerID.addEventListener('change', () => {
   Options.youtubePlayerID = ytPlayerID.value.trim();
   optionChanged();
+});
+
+// AI subtitles inputs
+aiSubsPreciseTiming.addEventListener('change', () => {
+  Options.aiSubtitles.preciseTiming = aiSubsPreciseTiming.checked;
+  optionChanged();
+});
+
+aiSubsWaitFirstLine.addEventListener('change', () => {
+  Options.aiSubtitles.waitForFirstLine = aiSubsWaitFirstLine.checked;
+  optionChanged();
+});
+
+aiSubsAutoGenerate.addEventListener('change', () => {
+  Options.aiSubtitles.autoGenerate = aiSubsAutoGenerate.checked;
+  optionChanged();
+});
+
+aiSubsBaseUrl.addEventListener('change', () => {
+  Options.aiSubtitles.baseUrl = aiSubsBaseUrl.value.trim();
+  aiSubsBaseUrl.value = Options.aiSubtitles.baseUrl;
+  optionChanged();
+});
+
+aiSubsModel.addEventListener('change', () => {
+  Options.aiSubtitles.model = aiSubsModel.value.trim();
+  aiSubsModel.value = Options.aiSubtitles.model;
+  optionChanged();
+});
+
+aiSubsTranslateModel.addEventListener('change', () => {
+  Options.aiSubtitles.translateModel = aiSubsTranslateModel.value.trim();
+  aiSubsTranslateModel.value = Options.aiSubtitles.translateModel;
+  optionChanged();
+});
+
+aiSubsLookahead.addEventListener('change', () => {
+  const parsed = parseInt(aiSubsLookahead.value, 10);
+  Options.aiSubtitles.lookaheadSeconds = Number.isNaN(parsed) ?
+    DefaultOptions.aiSubtitles.lookaheadSeconds :
+    Utils.clamp(parsed, 30, 600);
+  aiSubsLookahead.value = Options.aiSubtitles.lookaheadSeconds;
+  optionChanged();
+});
+
+aiSubsConcurrency.addEventListener('change', () => {
+  const parsed = parseInt(aiSubsConcurrency.value, 10);
+  Options.aiSubtitles.concurrency = Number.isNaN(parsed) ?
+    DefaultOptions.aiSubtitles.concurrency :
+    Utils.clamp(parsed, 1, 6);
+  aiSubsConcurrency.value = Options.aiSubtitles.concurrency;
+  optionChanged();
+});
+
+// The API key is stored under its own storage key, not in Options, so the Export button never writes it to a file
+aiSubsApiKey.addEventListener('change', async () => {
+  aiSubsApiKey.value = aiSubsApiKey.value.trim();
+  await Utils.setConfig('aiSubtitlesApiKey', aiSubsApiKey.value);
+});
+
+aiSubsApiKeyToggle.addEventListener('click', () => {
+  const reveal = aiSubsApiKey.type === 'password';
+  aiSubsApiKey.type = reveal ? 'text' : 'password';
+  aiSubsApiKeyToggle.textContent = Localize.getMessage(reveal ? 'options_aisubs_apikey_hide' : 'options_aisubs_apikey_show');
+});
+
+Utils.getConfig('aiSubtitlesApiKey').then((key) => {
+  aiSubsApiKey.value = key || '';
 });
 
 maxSpeed.addEventListener('change', () => {

@@ -20,7 +20,6 @@ export class SubtitleSyncer extends EventEmitter {
     if (!this.started) return;
     this.trackToSync.shift(delta);
     this.client.interfaceController.subtitlesManager.renderSubtitles();
-    this.onVideoTimeUpdate();
   }
 
   setup() {
@@ -131,14 +130,16 @@ export class SubtitleSyncer extends EventEmitter {
       this.lastUpdate = now;
 
       const cues = this.trackToSync.cues;
+      // keep cues that overlap the visible time range [minTime, maxTime]
       this.visibleCues = cues.filter((cue) => {
-        return cue.startTime <= maxTime || cue.endTime >= minTime;
+        return cue.startTime <= maxTime && cue.endTime >= minTime;
       });
     }
 
-
+    // Sets make the membership checks O(1) instead of scanning the arrays every frame
+    const visibleSet = new Set(this.visibleCues);
     this.trackElements = this.trackElements.filter((el) => {
-      if (!this.visibleCues.includes(el.cue)) {
+      if (!visibleSet.has(el.cue)) {
         el.element.remove();
         return false;
       } else {
@@ -147,9 +148,10 @@ export class SubtitleSyncer extends EventEmitter {
       return true;
     });
 
+    const renderedSet = new Set(this.trackElements.map((el) => el.cue));
     this.visibleCues.forEach((cue) => {
       if (cue.text.length === 0) return;
-      if (this.trackElements.find((el) => el.cue === cue)) return;
+      if (renderedSet.has(cue)) return;
 
       const el = WebUtils.create('div', '', 'timeline_track_cue');
       el.style.left = cue.startTime / video.duration * 100 + '%';

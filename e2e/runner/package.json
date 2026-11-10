@@ -1,0 +1,9 @@
+{
+  "name": "faststream-ai-subs-e2e",
+  "private": true,
+  "type": "module",
+  "description": "End-to-end test runner for AI subtitles (Playwright + unpacked extension)",
+  "dependencies": {
+    "playwright": "^1.64.1"
+  }
+}

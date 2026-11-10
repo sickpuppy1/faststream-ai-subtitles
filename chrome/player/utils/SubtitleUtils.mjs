@@ -92,17 +92,38 @@ export class SubtitleUtils {
    * @return {string} WebVTT time string.
    */
   static vttTimeFormat(sec) {
-    const h = Math.floor(sec / 3600);
-    const m = Math.floor(sec / 60) % 60;
-    const s = Math.floor(sec % 60);
-    const ms = Math.floor(sec * 1000) % 1000;
+    return this.formatVttTime(sec);
+  }
 
-    const hh = (100 + h).toString().substring(1);
-    const mm = (100 + m).toString().substring(1);
-    const ss = (100 + s).toString().substring(1);
-    const msms = (1000 + ms).toString().substring(1);
-    // HH:MM:SS,MS
-    return hh + ':' + mm + ':' + ss + '.' + msms;
+  /**
+   * Splits a time in seconds into zero-padded parts. Negative and NaN times
+   * become 0, and milliseconds are rounded (1.9996 s becomes 2.000 s).
+   * @param {number} sec - Time in seconds.
+   * @return {Object} Strings {hh, mm, ss, msms}.
+   */
+  static splitTime(sec) {
+    const totalMs = Number.isFinite(sec) ? Math.max(0, Math.round(sec * 1000)) : 0;
+    const h = Math.floor(totalMs / 3600000);
+    const m = Math.floor(totalMs / 60000) % 60;
+    const s = Math.floor(totalMs / 1000) % 60;
+    const ms = totalMs % 1000;
+
+    return {
+      hh: (100 + h).toString().substring(1),
+      mm: (100 + m).toString().substring(1),
+      ss: (100 + s).toString().substring(1),
+      msms: (1000 + ms).toString().substring(1),
+    };
+  }
+
+  /**
+   * Formats a time value in seconds to WebVTT time format (HH:MM:SS.mmm).
+   * @param {number} sec - Time in seconds.
+   * @return {string} WebVTT time string.
+   */
+  static formatVttTime(sec) {
+    const t = this.splitTime(sec);
+    return t.hh + ':' + t.mm + ':' + t.ss + '.' + t.msms;
   }
 
   /**
@@ -111,17 +132,27 @@ export class SubtitleUtils {
    * @return {string} SRT time string.
    */
   static srtTimeFormat(sec) {
-    const h = Math.floor(sec / 3600);
-    const m = Math.floor(sec / 60) % 60;
-    const s = Math.floor(sec % 60);
-    const ms = Math.floor(sec * 1000) % 1000;
+    const t = this.splitTime(sec);
+    return t.hh + ':' + t.mm + ':' + t.ss + ',' + t.msms;
+  }
 
-    const hh = (100 + h).toString().substring(1);
-    const mm = (100 + m).toString().substring(1);
-    const ss = (100 + s).toString().substring(1);
-    const msms = (1000 + ms).toString().substring(1);
-    // HH:MM:SS,MS
-    return hh + ':' + mm + ':' + ss + ',' + msms;
+  /**
+   * Converts an array of cues to a WebVTT document.
+   * Cue text is sanitized: '-->' becomes an arrow so it cannot end the
+   * timing line, and blank lines inside a cue are collapsed.
+   * @param {Array} cues - Array of cues with startTime, endTime and text.
+   * @return {string} WebVTT subtitle data.
+   */
+  static cuesToVtt(cues) {
+    let result = 'WEBVTT\n\n';
+    for (let i = 0; i < cues.length; i++) {
+      const cue = cues[i];
+      const start = this.formatVttTime(cue.startTime);
+      const end = this.formatVttTime(cue.endTime);
+      const text = String(cue.text).replace(/-->/g, '→').replace(/\n(\s*\n)+/g, '\n');
+      result += start + ' --> ' + end + '\n' + text + '\n\n';
+    }
+    return result;
   }
 
   /**
@@ -170,11 +201,13 @@ export class SubtitleUtils {
     }
     // get time strings
     if (s[line].match(/\d+:\d+:\d+/)) {
-      // convert time string
-      const m = s[1].match(/(\d+):(\d+):(\d+)(?:,(\d+))?\s*--?>\s*(\d+):(\d+):(\d+)(?:,(\d+))?/);
+      // convert time string (',' or '.' before the milliseconds, which may be missing)
+      const m = s[line].match(/(\d+):(\d+):(\d+)(?:[,.](\d+))?\s*--?>\s*(\d+):(\d+):(\d+)(?:[,.](\d+))?/);
       if (m) {
-        cue += m[1] + ':' + m[2] + ':' + m[3] + '.' + m[4] + ' --> ' +
-                    m[5] + ':' + m[6] + ':' + m[7] + '.' + m[8] + '\n';
+        const startMs = (m[4] || '').padEnd(3, '0').substring(0, 3);
+        const endMs = (m[8] || '').padEnd(3, '0').substring(0, 3);
+        cue += m[1] + ':' + m[2] + ':' + m[3] + '.' + startMs + ' --> ' +
+                    m[5] + ':' + m[6] + ':' + m[7] + '.' + endMs + '\n';
         line += 1;
       } else {
         // Unrecognized timestring

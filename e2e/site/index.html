@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>e2e index</title>
+<style>
+  body { margin: 24px; background: #111; color: #eee; font: 15px system-ui, sans-serif; }
+  a { color: #7cc4ff; } li { margin: 6px 0; }
+  code { color: #bbb; }
+</style>
+</head>
+<body>
+<h1>Subtitle extension e2e</h1>
+<p>Fixtures come from <code>node e2e/fixtures/make-fixtures.mjs</code>. Pages:</p>
+<ul>
+  <li><a href="tough.html">tough.html</a>: nested DOM, overlays, obfuscated URL, hls.js playing the disguised TS (PNG-prefixed .jpeg segments)</li>
+  <li><a href="tough-iframe.html">tough-iframe.html</a>: tough.html embedded from the second origin (port + 1)</li>
+  <li><a href="plain-mp4.html">plain-mp4.html</a>: &lt;video&gt; with a progressive MP4</li>
+</ul>
+<p>Direct manifests and files:</p>
+<ul>
+  <li><a href="../fixtures/out/hls-ts/master.m3u8">hls-ts/master.m3u8</a>: MPEG-TS segments, audio muxed</li>
+  <li><a href="../fixtures/out/hls-ts-disguised/master.m3u8">hls-ts-disguised/master.m3u8</a>: same TS, segments named .jpeg with a PNG prefix</li>
+  <li><a href="../fixtures/out/hls-fmp4/master.m3u8">hls-fmp4/master.m3u8</a>: fMP4 with a separate audio rendition</li>
+  <li><a href="../fixtures/out/dash/manifest.mpd">dash/manifest.mpd</a>: DASH, separate audio and video adaptation sets</li>
+  <li><a href="../fixtures/out/mp4/video.mp4">mp4/video.mp4</a>: progressive MP4</li>
+  <li><a href="../fixtures/out/groundtruth.json">groundtruth.json</a>: utterance and music timings</li>
+</ul>
+</body>
+</html>

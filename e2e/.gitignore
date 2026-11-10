@@ -1,0 +1,5 @@
+fixtures/out/
+runner/node_modules/
+runner/result-*.json
+runner/screenshot-*.png
+runner/log-*.txt

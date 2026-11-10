@@ -286,7 +286,7 @@ export default class MP4Player extends EventEmitter {
     }
 
     this.runLoad();
-    this.loopTimeout = setTimeout(this.mainLoop.bind(this), 1);
+    this.loopTimeout = setTimeout(this.mainLoop.bind(this), 50);
   }
 
   initializeFragments() {

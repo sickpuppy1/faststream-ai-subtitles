@@ -304,7 +304,7 @@ export class SyncedAudioPlayer extends EventEmitter {
   }
 
   setLevel(videoLevel, audioLevel) {
-    const changed = false;
+    let changed = false;
     this.audioPlayers.forEach((player) => {
       const videoChanged = player.getCurrentVideoLevelID() !== videoLevel;
       const audioChanged = player.getCurrentAudioLevelID() !== audioLevel;
@@ -326,6 +326,6 @@ export class SyncedAudioPlayer extends EventEmitter {
   destroy() {
     this.audioPlayers.forEach((player) => player.destroy());
     this.audioPlayers = [];
-    this.audioContext.close();
+    // Do not close this.audioContext here: it is created and owned by FastStreamClient, which closes it.
   }
 }

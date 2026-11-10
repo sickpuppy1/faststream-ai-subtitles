@@ -21,6 +21,10 @@ export class SubtitlesManager extends EventEmitter {
     this.activeTracks = [];
     this.isTestSubtitleActive = false;
 
+    this.aiButton = null;
+    this.transcriptionEngine = null;
+    this.renderLoopCancel = null;
+
     this.subtitleTrackListElements = [];
     this.subtitleTrackDisplayElements = [];
 
@@ -136,7 +140,52 @@ export class SubtitlesManager extends EventEmitter {
   onSettingsChanged(settings) {
     this.openSubtitlesSearch.setLanguageInputValue(settings.defaultLanguage);
     this.refreshSubtitleStyles();
-    this.renderSubtitles();
+    this.renderSubtitles(true);
+  }
+
+  /**
+   * Connects an AI transcription engine to the "AI subtitles" menu button.
+   * The engine must emit 'state' events with {enabled, status, message?}
+   * and have a toggle() method.
+   * @param {Object} engine - The transcription engine.
+   */
+  bindTranscriptionEngine(engine) {
+    this.transcriptionEngine = engine;
+    engine.on('state', (state) => this.updateAIButton(state));
+  }
+
+  /**
+   * Updates the AI subtitles button label and shows errors.
+   * @param {Object} state - {enabled: boolean, status: 'idle'|'working'|'error', message?: string}
+   */
+  updateAIButton(state) {
+    if (!this.aiButton) return;
+
+    const label = Localize.getMessage(state.enabled ? 'player_aisubs_stop' : 'player_aisubs_start');
+    this.aiButton.textContent = state.enabled && state.status === 'working' ? label + ' …' : label;
+
+    if (state.status === 'error' && state.message) {
+      AlertPolyfill.toast('error', state.message);
+    }
+  }
+
+  /**
+   * Called when a track's cues change (for example while AI subtitles stream in).
+   * Re-renders if the track is on screen; refreshes the list only when the
+   * track went from no cues to some cues.
+   * @param {SubtitleTrack} track - The changed track.
+   */
+  refreshTrack(track) {
+    if (this.activeTracks.indexOf(track) !== -1) {
+      this.renderSubtitles();
+    }
+
+    const count = track.cues.length;
+    const previousCount = track._lastRefreshedCount || 0;
+    if (previousCount === 0 && count > 0) {
+      this.updateTrackList();
+    }
+    track._lastRefreshedCount = count;
   }
 
   onSubtitleTrackDownloaded(track) {
@@ -200,7 +249,7 @@ export class SubtitlesManager extends EventEmitter {
         DOMElements.playerContainer.style.backgroundImage = '';
       }
 
-      this.renderSubtitles();
+      this.renderSubtitles(true);
     });
     WebUtils.setupTabIndex(DOMElements.subtitlesOptionsTestButton);
 
@@ -269,6 +318,18 @@ export class SubtitlesManager extends EventEmitter {
     });
 
     DOMElements.subtitlesView.appendChild(urlbutton);
+
+    // AI subtitles toggle. The label follows the engine state (see updateAIButton).
+    const aiButton = document.createElement('div');
+    aiButton.classList.add('subtitle-menu-option');
+    aiButton.textContent = Localize.getMessage('player_aisubs_start');
+    WebUtils.setupTabIndex(aiButton);
+    aiButton.addEventListener('click', (e) => {
+      this.transcriptionEngine?.toggle();
+      e.stopPropagation();
+    });
+    DOMElements.subtitlesView.appendChild(aiButton);
+    this.aiButton = aiButton;
 
     const internetbutton = document.createElement('div');
     internetbutton.textContent = Localize.getMessage('player_subtitlesmenu_searchbtn');
@@ -503,6 +564,61 @@ export class SubtitlesManager extends EventEmitter {
     }
 
     this.renderSubtitles();
+
+    // every path that changes activeTracks ends here, so sync the render loop here
+    if (this.activeTracks.length) {
+      this.startRenderLoop();
+    } else {
+      this.stopRenderLoop();
+    }
+  }
+
+  /**
+   * Starts a per-frame subtitle render loop if the video is playing and at
+   * least one track is active. Safe to call repeatedly.
+   */
+  startRenderLoop() {
+    if (this.renderLoopCancel || !this.activeTracks.length) return;
+
+    const video = this.client.currentVideo;
+    if (!video || video.paused || video.ended) return;
+
+    const tick = () => {
+      this.renderLoopCancel = null;
+      const currentVideo = this.client.currentVideo;
+      if (!this.activeTracks.length || !currentVideo || currentVideo.paused || currentVideo.ended) return;
+
+      this.renderSubtitles();
+      this.scheduleRenderFrame(tick);
+    };
+
+    this.scheduleRenderFrame(tick);
+  }
+
+  /**
+   * Stops the render loop started by startRenderLoop.
+   */
+  stopRenderLoop() {
+    if (this.renderLoopCancel) {
+      this.renderLoopCancel();
+      this.renderLoopCancel = null;
+    }
+  }
+
+  /**
+   * Schedules one callback for the next video frame, or the next animation
+   * frame when requestVideoFrameCallback is not available.
+   * @param {Function} callback - Called once on the next frame.
+   */
+  scheduleRenderFrame(callback) {
+    const video = this.client.currentVideo;
+    if (video && typeof video.requestVideoFrameCallback === 'function') {
+      const handle = video.requestVideoFrameCallback(callback);
+      this.renderLoopCancel = () => video.cancelVideoFrameCallback(handle);
+    } else {
+      const handle = requestAnimationFrame(callback);
+      this.renderLoopCancel = () => cancelAnimationFrame(handle);
+    }
   }
 
   applyStyles(trackContainer) {
@@ -611,7 +727,58 @@ export class SubtitlesManager extends EventEmitter {
     });
   }
 
-  renderSubtitles() {
+  /**
+   * Returns the cues that should be on screen at a given time, in startTime order.
+   * A cue is shown when startTime <= time <= endTime. Walks back from the last
+   * cue that has started, so a long cue is still found when short cues overlap it.
+   * @param {Array} cues - Cues sorted by startTime.
+   * @param {number} time - Playback time in seconds.
+   * @return {Array} Cues to show.
+   */
+  static getCuesAtTime(cues, time) {
+    // binary search for the first cue that starts after `time`
+    let lo = 0;
+    let hi = cues.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (cues[mid].startTime <= time) {
+        lo = mid + 1;
+      } else {
+        hi = mid;
+      }
+    }
+
+    const result = [];
+    const earliestStart = time - 30;
+    let steps = 0;
+    for (let i = lo - 1; i >= 0 && steps <= 200 && cues[i].startTime >= earliestStart; i--, steps++) {
+      if (cues[i].endTime >= time) {
+        result.push(cues[i]);
+      }
+    }
+
+    return result.reverse();
+  }
+
+  /**
+   * @param {Array} a - First cue list.
+   * @param {Array} b - Second cue list.
+   * @return {boolean} True when both lists hold the same cue objects in the same order.
+   */
+  static isSameCueList(a, b) {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      if (a[i] !== b[i]) return false;
+    }
+    return true;
+  }
+
+  /**
+   * Draws the cues for every active track (and the test cue, if on).
+   * Containers whose cues did not change are left alone.
+   * @param {boolean} force - Re-render every container, even if nothing changed (use after style changes).
+   */
+  renderSubtitles(force = false) {
     const cachedElements = this.subtitleTrackDisplayElements;
     const tracks = this.activeTracks;
     let trackLen = tracks.length;
@@ -620,11 +787,15 @@ export class SubtitlesManager extends EventEmitter {
       trackLen++;
     }
 
+    // true when a container was added, removed or changed, so bounds must be checked
+    let anyChanged = force;
+
     // Remove extra elements
     for (let i = cachedElements.length - 1; i >= trackLen; i--) {
       const el = cachedElements[i];
       el.parentElement.remove();
       cachedElements.splice(i, 1);
+      anyChanged = true;
     }
 
     // Add new elements
@@ -633,45 +804,27 @@ export class SubtitlesManager extends EventEmitter {
 
       cachedElements.push(trackContainer);
       DOMElements.subtitlesContainer.appendChild(wrapper);
+      anyChanged = true;
     }
 
     // Update elements
-    const currentTime = this.client.state.currentTime;
+    const currentTime = this.client.currentTime;
     let subtitlesVisible = 0;
 
     for (let i = 0; i < tracks.length; i++) {
       const trackContainer = cachedElements[i];
-      // trackContainer.replaceChildren();
-      const cues = tracks[i].cues;
+      const shown = SubtitlesManager.getCuesAtTime(tracks[i].cues, currentTime);
 
-      let cueIndex = Utils.binarySearch(cues, this.client.state.currentTime, (time, cue) => {
-        if (cue.startTime > time) {
-          return -1;
-        } else if (cue.startTime < time) {
-          return 1;
-        }
-        return 0;
-      });
-
-      const toAdd = [];
-      if (cueIndex < -1) {
-        cueIndex = -cueIndex - 2;
+      // same cues as last time: no DOM writes needed
+      if (!force && trackContainer._shownCues && SubtitlesManager.isSameCueList(trackContainer._shownCues, shown)) {
+        if (shown.length) subtitlesVisible++;
+        continue;
       }
 
-      while (cueIndex > 0 && cues[cueIndex - 1].endTime >= currentTime && cues[cueIndex - 1].startTime <= currentTime) {
-        cueIndex--;
-      }
+      anyChanged = true;
+      trackContainer._shownCues = shown;
 
-      while (cueIndex >= 0 &&cueIndex < cues.length && cues[cueIndex].endTime >= currentTime && cues[cueIndex].startTime <= currentTime) {
-        const cue = cues[cueIndex];
-        if (!cue.dom) {
-          cue.dom = WebVTT.convertCueToDOMTree(window, cue.text);
-        }
-        toAdd.push(cue.dom);
-        cueIndex++;
-      }
-
-      if (!toAdd.length) {
+      if (!shown.length) {
         trackContainer.style.opacity = 0;
 
         // Remove all children except one
@@ -679,6 +832,13 @@ export class SubtitlesManager extends EventEmitter {
         WebUtils.replaceChildrenPerformant(trackContainer, [fillerCue]);
         if (!fillerCue.textContent) fillerCue.textContent = '|';
       } else {
+        const toAdd = shown.map((cue) => {
+          if (!cue.dom) {
+            cue.dom = WebVTT.convertCueToDOMTree(window, cue.text);
+          }
+          return cue.dom;
+        });
+
         trackContainer.style.opacity = '';
 
         WebUtils.replaceChildrenPerformant(trackContainer, toAdd);
@@ -690,6 +850,9 @@ export class SubtitlesManager extends EventEmitter {
     if (this.isTestSubtitleActive) {
       const trackContainer = cachedElements[trackLen - 1];
 
+      // forget the real cues so the next normal render rewrites this container
+      trackContainer._shownCues = null;
+      anyChanged = true;
       trackContainer.style.opacity = '';
 
       if (!this.testCue) {
@@ -702,15 +865,22 @@ export class SubtitlesManager extends EventEmitter {
       subtitlesVisible++;
     }
 
-    if (subtitlesVisible) {
-      DOMElements.subtitlesContainer.style.display = '';
-      const margin = this.settingsManager.getSettings().bottomMargin;
-      DOMElements.subtitlesContainer.style.bottom = margin === '40px' ? '' : this.settingsManager.getSettings().bottomMargin;
-    } else {
-      DOMElements.subtitlesContainer.style.display = 'none';
+    const display = subtitlesVisible ? '' : 'none';
+    if (DOMElements.subtitlesContainer.style.display !== display) {
+      DOMElements.subtitlesContainer.style.display = display;
     }
 
-    this.checkTrackBounds();
+    if (subtitlesVisible) {
+      const margin = this.settingsManager.getSettings().bottomMargin;
+      const bottom = margin === '40px' ? '' : margin;
+      if (DOMElements.subtitlesContainer.style.bottom !== bottom) {
+        DOMElements.subtitlesContainer.style.bottom = bottom;
+      }
+    }
+
+    if (anyChanged) {
+      this.checkTrackBounds();
+    }
   }
 
   mediaInfoSet() {

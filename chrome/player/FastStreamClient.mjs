@@ -33,6 +33,7 @@ import {SyncedAudioPlayer} from './players/SyncedAudioPlayer.mjs';
 import {AlertPolyfill} from './utils/AlertPolyfill.mjs';
 import {MessageTypes} from './enums/MessageTypes.mjs';
 import {LevelManager} from './players/LevelManager.mjs';
+import {TranscriptionEngine} from './transcription/TranscriptionEngine.mjs';
 
 
 /**
@@ -116,6 +117,8 @@ export class FastStreamClient extends EventEmitter {
     this.playerLoader = new PlayerLoader();
     this.levelManager = new LevelManager(this);
     this.interfaceController = new InterfaceController(this);
+    this.transcriptionEngine = new TranscriptionEngine(this);
+    this.interfaceController.subtitlesManager.bindTranscriptionEngine(this.transcriptionEngine);
     this.keybindManager = new KeybindManager(this);
     this.downloadManager = new DownloadManager(this);
     this.sourcesBrowser = new SourcesBrowser(this);
@@ -319,6 +322,7 @@ export class FastStreamClient extends EventEmitter {
     // this.options.defaultYoutubeClient = options.defaultYoutubeClient;
     this.options.youtubePlayerID = options.youtubePlayerID;
     this.options.maximumDownloaders = options.maximumDownloaders;
+    this.transcriptionEngine.setSettings(options.aiSubtitles);
 
     if (sessionStorage && sessionStorage.getItem('autoplayNext') !== null) {
       this.options.autoplayNext = sessionStorage.getItem('autoplayNext') == 'true';
@@ -854,6 +858,7 @@ export class FastStreamClient extends EventEmitter {
       this.updateCSSFilters();
 
       this.interfaceController.updateToolVisibility();
+      this.transcriptionEngine.onSourceReady();
 
       this.state.autoPlayTriggered = false;
       if (autoPlay) {
@@ -1244,6 +1249,7 @@ export class FastStreamClient extends EventEmitter {
    */
   async resetPlayer() {
     const promises = [];
+    this.transcriptionEngine.reset();
     this.lastTime = 0;
 
     this.fragmentsStore = {};
@@ -1429,6 +1435,7 @@ export class FastStreamClient extends EventEmitter {
 
 
     this.context.on(DefaultPlayerEvents.SEEKING, (event) => {
+      this.transcriptionEngine.onSeek();
     });
 
 
@@ -1466,6 +1473,7 @@ export class FastStreamClient extends EventEmitter {
 
     this.context.on(DefaultPlayerEvents.FRAGMENT_UPDATE, () => {
       this.interfaceController.updateFragmentsLoaded();
+      this.transcriptionEngine.onFragmentUpdate();
     });
 
     this.context.on(DefaultPlayerEvents.SKIP_SEGMENTS, () => {
@@ -1525,6 +1533,9 @@ export class FastStreamClient extends EventEmitter {
     if (!this.player) {
       throw new Error('No source is loaded!');
     }
+
+    // Hold the start briefly so AI subtitles are ready from the first word.
+    await this.transcriptionEngine.waitUntilReady(this.currentTime);
 
     // Will throw if browser blocks autoplay
     await this.player.play();

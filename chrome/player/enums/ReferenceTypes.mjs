@@ -3,4 +3,5 @@ export const ReferenceTypes = {
   ANALYZER: 1,
   SAVER: 2,
   MP4PLAYER: 3,
+  TRANSCRIBER: 4,
 };

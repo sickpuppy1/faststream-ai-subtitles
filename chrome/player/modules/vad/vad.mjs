@@ -194,6 +194,8 @@ class AudioNodeVAD {
   constructor(ctx, options) {
     this.ctx = ctx;
     this.options = options;
+    // Frames are processed one at a time so overlapping async calls can't corrupt the model's recurrent state
+    this._queue = Promise.resolve();
   }
 
 
@@ -219,7 +221,9 @@ class AudioNodeVAD {
         case Message.AudioFrame:
           const buffer = ev.data.data;
           const frame = new Float32Array(buffer);
-          await this.processFrame(frame);
+          this._queue = this._queue
+              .then(() => this.processFrame(frame))
+              .catch((e) => console.error('VAD frame processing failed', e));
           break;
         default:
           break;

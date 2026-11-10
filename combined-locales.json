@@ -6964,5 +6964,131 @@
         "tr": "Uyarı: Tarayıcınız dosya depolama özelliklerini tam olarak desteklemiyor. Bunun nedeni, tarayıcınızın depolama alanının dolmuş olması veya uzun süredir yeniden başlatılmamış olması olabilir. Bazı özellikler beklendiği gibi çalışmayabilir.",
         "zh_CN": "警告：您的浏览器不完全支持文件存储功能。这可能是因为您的浏览器存储空间已满或长时间未重启。某些功能可能无法按预期工作。",
         "zh_TW": "警告：您的瀏覽器不完全支援檔案儲存功能。這可能是因為您的瀏覽器儲存空間已滿或長時間未重新啟動。某些功能可能無法如預期般運作。"
+    },
+    "options_aisubs_header": {
+        "en": "AI Subtitles"
+    },
+    "options_aisubs_hint": {
+        "en": "Audio is sent to the selected provider for transcription. You pay the provider per minute of audio. With look-ahead, audio up to the look-ahead seconds set below is transcribed ahead of playback so subtitles are ready before you reach them."
+    },
+    "options_aisubs_autogenerate": {
+        "en": "Auto-generate subtitles when a video has none"
+    },
+    "options_aisubs_precisetiming": {
+        "en": "Precise timing: also send audio to whisper-1 for word timestamps (OpenAI only, about double the cost)"
+    },
+    "options_aisubs_waitfirstline": {
+        "en": "When playback starts, wait up to 2.5 s for the first AI subtitle so it is on screen from the first word"
+    },
+    "options_aisubs_provider": {
+        "en": "Provider"
+    },
+    "options_aisubs_provider_openai": {
+        "en": "OpenAI"
+    },
+    "options_aisubs_provider_groq": {
+        "en": "Groq"
+    },
+    "options_aisubs_provider_custom": {
+        "en": "Custom (OpenAI-compatible)"
+    },
+    "options_aisubs_apikey": {
+        "en": "API key"
+    },
+    "options_aisubs_apikey_show": {
+        "en": "Show"
+    },
+    "options_aisubs_apikey_hide": {
+        "en": "Hide"
+    },
+    "options_aisubs_baseurl": {
+        "en": "Custom base URL"
+    },
+    "options_aisubs_model": {
+        "en": "Transcription model"
+    },
+    "options_aisubs_language": {
+        "en": "Spoken language"
+    },
+    "options_aisubs_translate_to": {
+        "en": "Translate subtitles to"
+    },
+    "options_aisubs_translate_off": {
+        "en": "Off"
+    },
+    "options_aisubs_translate_model": {
+        "en": "Translation model"
+    },
+    "options_aisubs_lookahead": {
+        "en": "Look-ahead (seconds, 30-600)"
+    },
+    "options_aisubs_concurrency": {
+        "en": "Parallel requests (1-6)"
+    },
+    "options_aisubs_lang_auto": {
+        "en": "Auto-detect"
+    },
+    "options_aisubs_lang_en": {
+        "en": "English"
+    },
+    "options_aisubs_lang_ja": {
+        "en": "Japanese"
+    },
+    "options_aisubs_lang_zh": {
+        "en": "Chinese"
+    },
+    "options_aisubs_lang_ko": {
+        "en": "Korean"
+    },
+    "options_aisubs_lang_es": {
+        "en": "Spanish"
+    },
+    "options_aisubs_lang_fr": {
+        "en": "French"
+    },
+    "options_aisubs_lang_de": {
+        "en": "German"
+    },
+    "options_aisubs_lang_pt": {
+        "en": "Portuguese"
+    },
+    "options_aisubs_lang_ru": {
+        "en": "Russian"
+    },
+    "options_aisubs_lang_it": {
+        "en": "Italian"
+    },
+    "options_aisubs_lang_hi": {
+        "en": "Hindi"
+    },
+    "options_aisubs_lang_ar": {
+        "en": "Arabic"
+    },
+    "options_aisubs_lang_id": {
+        "en": "Indonesian"
+    },
+    "options_aisubs_lang_th": {
+        "en": "Thai"
+    },
+    "options_aisubs_lang_vi": {
+        "en": "Vietnamese"
+    },
+    "player_aisubs_start": {
+        "en": "Generate subtitles (AI)"
+    },
+    "player_aisubs_stop": {
+        "en": "Stop AI subtitles"
+    },
+    "player_aisubs_nokey": {
+        "en": "Add an API key in Settings → AI Subtitles first."
+    },
+    "player_aisubs_tracklabel": {
+        "en": "AI subtitles"
+    },
+    "player_aisubs_error": {
+        "en": "AI subtitles error"
+    },
+    "player_aisubs_livecapture": {
+        "en": "This video's audio can't be read ahead of time, so live capture is used (subtitles may lag a few seconds)."
     }
 }

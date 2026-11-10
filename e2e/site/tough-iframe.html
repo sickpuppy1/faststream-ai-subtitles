@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tough page inside a cross-origin iframe (e2e)</title>
+<style>
+  body { margin: 0; background: #111; color: #eee; font: 14px system-ui, sans-serif; }
+  p { margin: 8px 12px; }
+  iframe { display: block; width: 1000px; height: 640px; border: 0; margin: 0 12px; }
+</style>
+</head>
+<body>
+<p>Embeds tough.html from the second origin (port + 1). The iframe src is built from this page's port.</p>
+<iframe id="f" allow="autoplay; fullscreen"></iframe>
+<script>
+  // Same server, second port: a different origin, so the extension sees a cross-origin frame.
+  var p = location.port ? Number(location.port) : 80;
+  var src = location.protocol + '//' + location.hostname + ':' + (p + 1) + '/site/tough.html';
+  document.getElementById('f').src = src;
+  console.log('[tough-iframe] iframe src', src);
+</script>
+</body>
+</html>

@@ -47,4 +47,17 @@ export const DefaultOptions = {
   videoDelay: 0,
   maximumDownloaders: 6,
   youtubePlayerID: '',
+  aiSubtitles: {
+    autoGenerate: false, // start automatically when a video has no subtitles
+    waitForFirstLine: true, // on play, wait (max 2.5 s) until the line at the playhead is ready
+    preciseTiming: true, // OpenAI text-only models: also ask whisper-1 for word timestamps
+    provider: 'openai', // 'openai' | 'groq' | 'custom'
+    baseUrl: '', // custom OpenAI-compatible endpoint, e.g. http://127.0.0.1:8080/v1
+    model: '', // '' = provider default
+    language: '', // spoken language ISO 639-1, '' = auto-detect
+    translateTo: '', // '' = off, else target language name, e.g. 'English'
+    translateModel: '', // '' = provider default
+    lookaheadSeconds: 120, // how far ahead of playback to transcribe
+    concurrency: 3, // parallel requests
+  },
 };

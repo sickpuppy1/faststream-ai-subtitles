@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tough Video Page (e2e)</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  html, body { margin: 0; background: #0b0d10; color: #ddd; font: 14px/1.4 system-ui, sans-serif; }
+  .wrap { padding: 12px; } .wrap > div > div > div { padding: 2px; }
+  .player-shell { position: relative; width: 960px; height: 540px; background: #000; }
+  .player-shell > div { position: absolute; inset: 0; }
+  video.main { width: 100%; height: 100%; background: #000; display: block; }
+  .overlay-a { background: rgba(255, 255, 255, 0.0); pointer-events: auto; z-index: 3; }
+  .overlay-b { z-index: 4; pointer-events: none; }
+  .fake-controls { z-index: 5; top: auto; height: 56px; background: linear-gradient(transparent, #000a); }
+  .fake-controls button { margin: 10px; padding: 6px 10px; }
+  .ad-banner { z-index: 6; top: 8px; left: 8px; right: auto; width: 220px; height: 60px; background: #c0392b; color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .cookie { position: fixed; bottom: 0; left: 0; right: 0; background: #222; padding: 10px; z-index: 99; }
+  .log { font: 12px monospace; white-space: pre-wrap; background: #151a20; padding: 8px; margin-top: 12px; height: 120px; overflow: auto; }
+  .title-bar { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+  .hidden-x { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+ <div><div><div><div><div><div>
+  <h2 style="margin:6px 0">Lecture: everyday conversation (tough page)</h2>
+ </div></div></div></div></div></div>
+ <div class="title-bar"><div><span>Uploaded 2026</span></div><div><span>Views 1,204</span></div></div>
+ <div><div><div>
+  <div class="player-shell" id="shell">
+    <div><div><div>
+      <video class="main" id="v" controls muted playsinline></video>
+    </div></div></div>
+    <div class="overlay-a"><div><div><span></span></div></div></div>
+    <div class="overlay-b"><div><div><span class="hidden-x">overlay</span></div></div></div>
+    <div class="ad-banner"><span>Sponsored: Try our app free</span></div>
+    <div class="fake-controls"><div><div>
+      <button id="fakePlay" type="button">Play</button>
+      <button type="button">CC</button>
+      <button type="button">HD</button>
+    </div></div></div>
+  </div>
+ </div></div></div>
+ <div class="log" id="log"></div>
+</div>
+<div class="cookie"><div><div>
+  We use cookies. <button type="button" onclick="this.parentNode.parentNode.style.display='none'">OK</button>
+</div></div></div>
+
+<script type="module">
+// hls.js (vendored unmodified from chrome/player/modules/hls.mjs, default export Hls)
+import Hls from './vendor/hls.mjs';
+
+const logEl = document.getElementById('log');
+const log = (...a) => {
+  const s = a.map((x) => (typeof x === 'string' ? x : JSON.stringify(x))).join(' ');
+  console.log('[tough]', s);
+  logEl.textContent += s + '\n';
+};
+
+// The URL is never written out literally: three base64 fragments, stored shuffled,
+// are reordered by an index list and joined at runtime, then resolved against
+// the page origin (so the same page works on the cross-origin port too).
+const fragments = [
+  'b3V0L2hscy10cy1kaXNndWlzZWQv', // "out/hls-ts-disguised/"
+  'bWFzdGVyLm0zdTg=',             // "master.m3u8"
+  'L2ZpeHR1cmVzLw==',             // "/fixtures/"
+  'ZGVjb3ktbm90LXVzZWQ=',        // decoy, never read
+];
+const order = [2, 0, 1];
+const assembled = order.map((i) => atob(fragments[i])).join('');
+const url = new URL(assembled, location.href).href;
+log('playing', url);
+
+const video = document.getElementById('v');
+document.getElementById('fakePlay').addEventListener('click', () => video.play());
+
+if (Hls.isSupported()) {
+  const hls = new Hls({ debug: false });
+  hls.on(Hls.Events.ERROR, (_e, data) => {
+    log('hls error', { type: data.type, details: data.details, fatal: data.fatal });
+  });
+  hls.on(Hls.Events.MANIFEST_PARSED, (_e, data) => log('manifest levels', data.levels.length));
+  hls.loadSource(url);
+  hls.attachMedia(video);
+} else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+  video.src = url;
+} else {
+  log('no HLS support');
+}
+</script>
+</body>
+</html>

@@ -10,6 +10,7 @@ function resampleAudioSample(data) {
   const format = data.format;
   let isInterleaved = false;
   let TypedArrayConstructor;
+  let scale = 1;
   switch (format) {
     case 'u8':
       isInterleaved = true;
@@ -22,6 +23,8 @@ function resampleAudioSample(data) {
     case 's32':
       isInterleaved = true;
       TypedArrayConstructor = Int32Array;
+      scale = 1 / 2147483648;
+      break;
     case 'f32':
       isInterleaved = true;
       TypedArrayConstructor = Float32Array;
@@ -72,7 +75,8 @@ function resampleAudioSample(data) {
 
   const resampled = [];
   for (let i = 0; i < numChannels; i++) {
-    const currentSample = channels[i];
+    // s32 samples are integers; scale them to the -1..1 float range the resampler expects
+    const currentSample = scale === 1 ? channels[i] : Float32Array.from(channels[i], (v) => v * scale);
     const resampler = resamplers[i];
     resampled.push(resampler.full(currentSample));
   }
